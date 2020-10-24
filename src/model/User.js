@@ -49,7 +49,10 @@ const userSchema = mongoose.Schema({
             type:String,
             required:true
         }
-    }]
+    }],
+    avatar:{
+        type:Buffer
+    }
 })
 
 //middleware pre function to execute for password hasing
@@ -89,6 +92,16 @@ userSchema.statics.findUser = async (email, passowrd) =>{
     }
     
     return user
+}
+
+//hide the private data
+userSchema.methods.toJSON = function(){
+    const user = this
+    const userObject = user.toObject()
+
+    delete userObject.passowrd
+    delete userObject.tokens
+    return userObject
 }
 
 // create a User Model

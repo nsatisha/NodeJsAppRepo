@@ -2,6 +2,8 @@ const { request } = require('express');
 const express = require('express')
 const userrouter = new express.Router()
 const User = require('../model/User')
+const auth = require('../middleware/auth')
+const multer = require('multer')
 
 
 // POST Request to save the user data
@@ -77,7 +79,7 @@ try{
 
 // Read the user info using GET request
 
-userrouter.get('/users',async(request,response)=>{
+userrouter.get('/users/me',auth,async(request,response)=>{
     // User.find({}).then((users)=>{
     //     response.send(users)
     // }).catch((error)=>{
@@ -85,13 +87,29 @@ userrouter.get('/users',async(request,response)=>{
     // });
 
     // Above code can be  written easliy with Async/Await
-    try{
-        const users = await User.find({})
-        response.send(users)
-    }catch(e){
-        response.status(400).send(e)
-    }
+    //commented below code as we are using the auth middleware were user is set in the request
+    // try{
+    //     const users = await User.find({})
+    //     response.send(users)
+    // }catch(e){
+    //     response.status(400).send(e)
+    // }
+
+    response.send(request.user)
     
+})
+userrouter.post('/users/logout',auth,async(req,res)=>{
+    console.log('logout')
+    try {
+        req.user.tokens = req.user.tokens.filter((token)=>{
+            return token.token != req.token
+        })
+
+        await req.user.save()
+        res.send('Logged Out successfully')
+    } catch (error) {
+       res.status(500).send() 
+    }
 })
 
 userrouter.get('/users/:id',async(request,response)=>{
@@ -111,5 +129,56 @@ userrouter.get('/users/:id',async(request,response)=>{
       }catch(e){
           response.status(400).send(e)
       }
+})
+
+//File upload using multer
+//create instance of multer
+
+const upload = new multer({
+    // dest: 'avatar/', commented this line as we are not storing the image/file on filesystem but on to DB
+    limits: {
+        fileSize: 1000000
+    },
+    fileFilter(req,file,cb){
+        // if(!file.originalname.endsWith('pdf')){ //replaced with below regular expression
+            if(!file.originalname.match(/\.(doc|docx|png)$/)){
+            return cb(new Error('Please upload the valid word file format'))
+        }
+        cb(undefined,true)
+    }
+})
+
+// handler to fileupload request
+userrouter.post('/upload/me/avatar',auth,upload.single('avatar'),async(req,res)=>{
+    req.user.avatar = req.file.buffer
+    await req.user.save()
+    res.status(200).send()
+}, (error,req,res,next)=>{
+    res.status(400).send({error:error.message})
+})
+
+// handler to fileupload request
+userrouter.delete('/delete/me/avatar',auth,async(req,res)=>{
+    req.user.avatar = undefined
+    req.user.save()
+    res.status(200).send()
+}, (error,req,res,next)=>{
+    res.status(400).send({error:error.message})
+})
+
+//read user avatar
+userrouter.get('/user/:id/avatar', async(req,res)=>{
+    try{
+            const user = await User.findById(req.params.id)
+            if(!user | !user.avatar){
+                throw new Error()
+            }
+
+            res.set('Content-type','image/jpg')
+            res.status(200).send(user.avatar)
+    }catch(e){
+        res.status(400).send()
+    }
+
 })
 module.exports = userrouter

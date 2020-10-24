@@ -8,6 +8,19 @@ require('./db/mongoose')
 
 const app = express()
 const port = process.env.PORT || 3000
+
+//Express Middleware Function
+//commented below sample middleware code as we are using auth middleware in seperate file
+
+// app.use((req,res,next)=>{
+//     console.log('Express Middleware ')
+//     if(req.method === 'POST' || req.method === 'GET' || req.method === 'PATCH' || req.method === 'DELETE') {
+//         res.status(500).send({Error: 'Maintainence Mode'})
+//     }else {
+//         next()
+//     }
+// })
+
 app.use(express.json())
 app.use(userRoute)
 app.use(taskRoute)
